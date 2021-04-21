@@ -12,7 +12,7 @@ import Feather from "react-native-vector-icons/Feather";
 import { colors, marginHorizontal } from "../../styles/variables";
 import * as Animatable from "react-native-animatable";
 
-function RegisterForm() {
+function RegisterForm({ form, handleChange }) {
   return (
     <>
       <Text style={styles.text_footer}>Cafe/Restaurant name</Text>
@@ -22,35 +22,44 @@ function RegisterForm() {
           placeholder="cafe/restaurant name"
           style={styles.textInput}
           autoCapitalize="none"
-          // onChangeText={(val) => textInputChange(val)}
+          value={form?.PlaceName}
+          onChangeText={(val) => handleChange(val, "PlaceName")}
         />
-        {true ? (
-          <Animatable.View animation="bounceIn">
-            <Feather name="check-circle" color="green" size={20} />
-          </Animatable.View>
-        ) : null}
       </View>
-      <Text   style={[
+      <Text
+        style={[
           styles.text_footer,
           {
             marginTop: marginHorizontal.small,
           },
-        ]}>Cafe/restaurant slug</Text>
+        ]}
+      >
+        Cafe/restaurant slug
+      </Text>
       <View style={styles.action}>
         <FontAwesome name="spoon" color="#05375a" size={20} />
         <TextInput
           placeholder="Unique name for your place"
           style={styles.textInput}
+          value={form?.PlaceSlug}
           autoCapitalize="none"
-          // onChangeText={(val) => textInputChange(val)}
+          onChangeText={(val) => handleChange(val, "PlaceSlug")}
         />
-        {true ? (
+        {false ? (
           <Animatable.View animation="bounceIn">
             <Feather name="check-circle" color="green" size={20} />
           </Animatable.View>
-        ) : null}
+        ) : (
+          <Animatable.View animation="bounceIn">
+            <Feather name="x-circle" color="red" size={20} />
+          </Animatable.View>
+        )}
       </View>
-
+      <View>
+        <Text style={{ color: "red" }}>
+          Slug taken please select another one !
+        </Text>
+      </View>
       <Text
         style={[
           styles.text_footer,
@@ -65,10 +74,11 @@ function RegisterForm() {
         <Feather name="lock" color="#05375a" size={20} />
         <TextInput
           placeholder="Your Password"
-          // secureTextEntry={data.secureTextEntry ? true : false}
+          value={form?.Password}
+          secureTextEntry={true}
           style={styles.textInput}
           autoCapitalize="none"
-          // onChangeText={(val) => handlePasswordChange(val)}
+          onChangeText={(val) => handleChange(val, "Password")}
         />
         <TouchableOpacity>
           {true ? (
@@ -94,8 +104,10 @@ function RegisterForm() {
         <TextInput
           placeholder="Confirm Your Password"
           secureTextEntry={true}
+          value={form?.ConfirmPassword}
           style={styles.textInput}
           autoCapitalize="none"
+          onChangeText={(val) => handleChange(val, "ConfirmPassword")}
         />
         <TouchableOpacity onPress={() => {}}>
           {true ? (
@@ -119,7 +131,6 @@ function RegisterForm() {
           Privacy policy
         </Text>
       </View>
-     
     </>
   );
 }

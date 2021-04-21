@@ -6,24 +6,70 @@ import {
   StyleSheet,
   ScrollView,
   StatusBar,
+  ToastAndroid,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { colors, fontSize } from "../styles/variables";
 import RegisterForm from "../components/Auth/RegisterForm";
 import LoginForm from "../components/Auth/LoginForm";
 import SignupButton from "../components/Auth/SignupButton";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { TOKEN_PREFIX } from "../utility/commonUtility";
+import { AuthContext } from "../contexts/auth.context";
 
 const Auth = ({ navigation }) => {
   let formTypeObj = { LOGIN: "LOGIN", REGISTER: "REGISTER" };
   const [formType, setformType] = useState(formTypeObj.LOGIN);
+  const { signUp, signIn } = React.useContext(AuthContext);
+
+  const [form, setform] = useState({
+    PlaceName: "",
+    PlaceSlug: "",
+    Password: "",
+    ConfirmPassword: "",
+  });
+
+  const onRegister = async () => {
+    
+    let { PlaceName, PlaceSlug, Password, ConfirmPassword } = form;
+    if (!PlaceName || !PlaceSlug || !Password || !ConfirmPassword)
+      return ToastAndroid.showWithGravityAndOffset(
+        "All fields are compulsory !",
+        ToastAndroid.LONG,
+        ToastAndroid.BOTTOM,
+        25,
+        50
+      );
+
+      if(Password != ConfirmPassword) {
+        return ToastAndroid.showWithGravityAndOffset(
+          "Passwords dont match !",
+          ToastAndroid.LONG,
+          ToastAndroid.BOTTOM,
+          25,
+          50
+        );
+      }
+      signUp(form);
+  };
 
   const onLogin = async () => {
- await AsyncStorage.setItem(TOKEN_PREFIX, "Token");
-navigation.navigate("Qr")
-  }
+    
+    let {  PlaceSlug, Password, } = form;
+    if (!PlaceSlug || !Password )
+      return ToastAndroid.showWithGravityAndOffset(
+        "All fields are compulsory !",
+        ToastAndroid.LONG,
+        ToastAndroid.BOTTOM,
+        25,
+        50
+      );
 
+      signIn(form);
+  };
+
+  const handleChange = (val: String, name: any) => {
+    setform({...form, [name]: val});
+  }
+ 
   return (
     <View style={styles.container}>
       <StatusBar backgroundColor={colors.primary} barStyle="light-content" />
@@ -41,20 +87,30 @@ navigation.navigate("Qr")
           showsVerticalScrollIndicator={false}
           showsHorizontalScrollIndicator={false}
         >
-          {formType == formTypeObj.LOGIN ? <LoginForm /> : <RegisterForm />}
+          {formType == formTypeObj.LOGIN ? (
+            <LoginForm form={form} handleChange={handleChange}  />
+          ) : (
+            <RegisterForm form={form}  handleChange={handleChange} />
+          )}
 
           {formType == formTypeObj.LOGIN ? (
             <SignupButton title={`LOGIN`} onPress={onLogin} />
           ) : (
-            <SignupButton title={`REGISTER`} onPress={() => {}} />
+            <SignupButton title={`REGISTER`} onPress={onRegister} />
           )}
           <View>
             <Text>OR</Text>
           </View>
           {formType == formTypeObj.LOGIN ? (
-            <SignupButton title={`REGISTER`} onPress={() => setformType(formTypeObj.REGISTER)} />
+            <SignupButton
+              title={`REGISTER`}
+              onPress={() => setformType(formTypeObj.REGISTER)}
+            />
           ) : (
-            <SignupButton title={`LOGIN`} onPress={() => setformType(formTypeObj.LOGIN)} />
+            <SignupButton
+              title={`LOGIN`}
+              onPress={() => setformType(formTypeObj.LOGIN)}
+            />
           )}
         </ScrollView>
       </Animatable.View>

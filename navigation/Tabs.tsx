@@ -1,6 +1,6 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { StyleSheet, Text, View, Image, TouchableOpacity } from "react-native";
+import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
 import AddMenu from "../screens/AddMenu";
 import Profile from "../screens/Profile";
 import Home from "../screens/Home";
@@ -74,13 +74,10 @@ const Tabs = () => {
       tabBarOptions={{
         showLabel: false,
         style: {
-          position: "absolute",
-          bottom: 25,
-          left: 20,
-          right: 20,
           backgroundColor: "#fff",
-          borderRadius: 15,
-          height: 90,
+          borderTopLeftRadius: 20, //Top Left Corner
+          borderTopRightRadius: 20,
+          height: 80,
           ...styles.shadow,
         },
       }}

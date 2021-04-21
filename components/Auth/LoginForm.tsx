@@ -13,7 +13,7 @@ import { colors, marginHorizontal } from "../../styles/variables";
 import SignupButton from "./SignupButton";
 import * as Animatable from "react-native-animatable";
 
-function LoginForm() {
+function LoginForm({form, handleChange}) {
   return (
     <>
       <Text   style={[
@@ -25,7 +25,8 @@ function LoginForm() {
           placeholder="Unique name for your place"
           style={styles.textInput}
           autoCapitalize="none"
-          // onChangeText={(val) => textInputChange(val)}
+          value={form?.PlaceSlug}
+          onChangeText={(val) => handleChange(val, "PlaceSlug")}
         />
         {true ? (
           <Animatable.View animation="bounceIn">
@@ -48,10 +49,10 @@ function LoginForm() {
         <Feather name="lock" color="#05375a" size={20} />
         <TextInput
           placeholder="Your Password"
-          // secureTextEntry={data.secureTextEntry ? true : false}
-          style={styles.textInput}
+          value={form?.Password}
+           style={styles.textInput}
           autoCapitalize="none"
-          // onChangeText={(val) => handlePasswordChange(val)}
+          onChangeText={(val) => handleChange(val, "Password")}
         />
         <TouchableOpacity>
           {true ? (

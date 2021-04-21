@@ -60,10 +60,14 @@ import {
     darkGray: 'rgb(74,74,74)',
     gray: 'rgb(155,155,155)',
     lightGray: 'rgb(216,216,216)',
-    primary: "#e32f45",
-    secondary: "#01c0ea"
+    primary: '#F5CA48',
+    secondary: '#F26C68',
+    background: '#F9F9FB',
+    textDark: '#313234',
+    price: '#E4723C',
+    textLight: '#CDCDCD',
   };
-  
+
   // font family
   const fontFamily = {
     // regular: 'SanRegular',

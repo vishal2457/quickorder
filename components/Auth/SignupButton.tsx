@@ -17,7 +17,7 @@ function SignupButton({title, onPress}) {
             activeOpacity={0.8}
         >
         <LinearGradient
-            colors={["#e8586a", colors.primary]}
+            colors={[ colors.secondary, colors.secondary]}
             style={styles.signIn}
         >
             <Text style={[styles.textSign, {

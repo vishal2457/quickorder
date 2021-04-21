@@ -1,32 +1,18 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { useContext, useEffect } from "react";
-import { Button, Text, View } from "react-native";
+import React from "react";
+import { Button, Text, View, ToastAndroid, } from "react-native";
+import Header from "../components/Header";
 import { AuthContext } from "../contexts/auth.context";
-import { TOKEN_PREFIX } from "../utility/commonUtility";
 
 function Home({ navigation }) {
-  const { authState } = useContext(AuthContext);
-
-  useEffect(() => {
-    navigation.addListener('focus', () => {        
-      
-      });
-    return () => {};
-  }, [authState.isAuthenticated]);
-
+  const { signOut } = React.useContext(AuthContext);
   const logout = async () => {
-    try {
-      await AsyncStorage.removeItem(TOKEN_PREFIX);
-      navigation.navigate('Auth')
-    } catch (error) {
-      console.log(error);
-    }
+    signOut()
   };
 
   return (
     <View>
-      <Text>Home</Text>
-      {authState.isAuthenticated ?   <Button title="Logout" onPress={logout} /> :  <Button title="Login" onPress={logout} /> }
+      <Header navigation={navigation} />
+      <Button title="Logout" onPress={logout} />
     
     </View>
   );
