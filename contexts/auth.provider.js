@@ -1,35 +1,32 @@
-import React, { useReducer } from "react";
+import React, {useState, useEffect} from "react";
 import { TOKEN_PREFIX } from "../utility/commonUtility";
 import { AuthContext } from "./auth.context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const INITIAL_STATE = {
-  isAuthenticated:  false,
-};
-
-
-console.log(INITIAL_STATE);
-function reducer(state, action) {
-  switch (action.type) {
-    case "SIGNIN_SUCCESS":
-      return {
-        ...state,
-        isAuthenticated: false,
-      };
-    case "SIGN_OUT":
-      return {
-        ...state,
-        isAuthenticated: false,
-      };
-    default:
-      return state;
-  }
-}
-
 export const AuthProvider = ({ children }) => {
-  const [authState, authDispatch] = useReducer(reducer, INITIAL_STATE);
+  const [isAuthenticated, setAuthenticated] = useState(false);
+
+  const login = () => {
+    setAuthenticated(true);
+  };
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const token = await AsyncStorage.getItem(TOKEN_PREFIX);
+        if (token) {
+          setAuthenticated(true);
+        } else if (token === null) {
+          setAuthenticated(false);
+        }
+      } catch (error) {
+        setAuthenticated(false);
+      }
+    })();
+    return () => {};
+  }, []);
   return (
-    <AuthContext.Provider value={{ authState, authDispatch }}>
+    <AuthContext.Provider value={{ isAuthenticated, login }}>
       {children}
     </AuthContext.Provider>
   );
