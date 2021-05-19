@@ -1,7 +1,7 @@
 import { ToastAndroid } from "react-native";
 
 export const TOKEN_PREFIX = "QUICK_ORDER";
-export const API_URL = "http://192.168.0.107:5000"
+export const API_URL = "http://192.168.0.110:5000"
 
 export const showToast = (msg: string) => {
 return  ToastAndroid.showWithGravityAndOffset(

@@ -69,8 +69,12 @@ export default function App() {
   const authContext = React.useMemo(
     () => ({
       signIn: (data: object) => {
+        console.log(data, "this is data");
+        
         Api.post("/place/placeLogin", data)
         .then(async result => {
+          console.log(result);
+          
           try {
             
             await AsyncStorage.setItem(TOKEN_PREFIX, result.data.data);
@@ -83,7 +87,9 @@ export default function App() {
   
           
         }).catch(err => {
-          if(err.response.status){
+          console.log(err);
+          
+          if(err?.response?.status){
            return showToast("Invalid Credentials !")
           }
           return showToast("Something went wrong !!")
