@@ -11,10 +11,13 @@ import { FoodType } from "../../utility/commonUtility";
 import FontAwesome from "react-native-vector-icons/FontAwesome";
 import Feather from "react-native-vector-icons/Feather";
 
-function SingleMenuItem({ menuItem, index, subIndex, editMenu }) {
+function SingleMenuItem({ menuItem, index, subIndex, editMenu, togggleSwitchState, switchLoading }) {
   let { VEG, NON_VEG } = FoodType;
-  const [isEnabled, setIsEnabled] = useState(false);
-  const toggleSwitch = () => setIsEnabled((previousState) => !previousState);
+  const [isEnabled, setIsEnabled] = useState(menuItem?.IsActive);
+  const toggleSwitch = () => {
+   
+    togggleSwitchState(menuItem?.ID, menuItem?.IsActive)
+    setIsEnabled((previousState) => !previousState)};
 
   return (
     <View style={styles.container}>
@@ -107,10 +110,11 @@ function SingleMenuItem({ menuItem, index, subIndex, editMenu }) {
           </TouchableOpacity>
           <Switch
             trackColor={{ false: "#767577", true: colors.secondary }}
-            thumbColor={menuItem?.IsActive ? colors.primary : "#f4f3f4"}
+            thumbColor={isEnabled ? colors.primary : "#f4f3f4"}
             ios_backgroundColor="#3e3e3e"
             onValueChange={toggleSwitch}
-            value={menuItem?.IsActive ? true : false}
+            value={isEnabled? true : false}
+            disabled={switchLoading}
             style={{
               transform: [
                 { scaleX: Platform.OS == "ios" ? 0.8 : 1 },

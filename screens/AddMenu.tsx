@@ -1,119 +1,53 @@
-import React, { useEffect, useRef } from "react";
-//@ts-ignore
-import Header from "../components/Header.tsx";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  TextInput,
 } from "react-native";
-import Octicons from "react-native-vector-icons/Octicons";
-import { colors, marginHorizontal, spaceVertical } from "../styles/variables";
-import RBSheet from "react-native-raw-bottom-sheet";
+import Feather from "react-native-vector-icons/Feather";
+import Ionicons from "react-native-vector-icons/Ionicons";
+import FontAwesome from "react-native-vector-icons/FontAwesome";
 import Api from "../utility/API";
-import BottomSheet from "../components/Menu/BottomSheet";
+import { colors, marginHorizontal, spaceVertical } from "../styles/variables";
+import { Picker } from "@react-native-picker/picker";
+import Conditional from "../components/Conditional";
+import Header from "../components/Header";
 import { showToast } from "../utility/commonUtility";
-import MenuItem from "../components/Menu/MenuItem";
 
-function AddMenu({ navigation }) {
-  const refRBSheet: any = useRef();
-
-  let BottomSheetTypeObj = {
-    ADD_CATEGORY: "ADD_CATEGORY",
-    ADD_MENU: "ADD_MENU",
-  };
-
+function AddMenu({ navigation, route }) {
   let FoodType = {
     VEG: "Veg",
     NON_VEG: "NonVeg",
   };
   let { VEG, NON_VEG } = FoodType;
+  let formTypeObj = {
+    ADD_FORM: "ADD_FORM",
+    EDIT_FORM: "EDIT_FORM",
+  };
+  let { ADD_FORM, EDIT_FORM } = formTypeObj;
 
-  let { ADD_CATEGORY, ADD_MENU } = BottomSheetTypeObj;
-
-  const [BottomSheetType, setBottomSheetType] = React.useState(ADD_CATEGORY);
-
-  const [categoryForm, setcategoryForm] = React.useState({
-    CategoryName: "",
-    Description: "",
-  });
-
-  const [menuForm, setmenuForm] = React.useState({
+  const [formType, setformType] = useState(ADD_FORM);
+  const [categories, setcategories] = useState<any[]>([]);
+  const [editID, seteditID] = useState<any>(null);
+  const [selectedCategory, setselectedCategory] = useState("");
+  const [menuForm, setmenuForm] = useState({
     Name: "",
     ItemDescription: "",
     Price: "",
     FoodType: VEG,
     Ingredients: [],
+    AddOns: [],
     Ingredient: "",
   });
-
-  const [categories, setcategories] = React.useState<any[]>([]);
-  const [menu, setmenu] = React.useState<any[]>([]);
-  const [selectedCategory, setselectedCategory] = React.useState("");
+  const [types, settypes] = useState({ arr: [{ TypeName: "", Price: "", Serves:"" }] });
+  const [addOns, setaddOns] = useState({ arr: [] });
 
   /**
-   * @Useeffect
+   * @get_all_categories
    */
-  useEffect(() => {
-    getMenu()
-    return () => {
-      
-    }
-  }, []);
-
-  function getMenu() {
-    Api.get("/menuItem/getAll")
-    .then(result => {
-
-      setmenu(result?.data?.data) 
-    })
-    .catch(err => console.log(err))
-  }
-
-  /**
-   * @Handle_Category_Change
-   */
-  const handleCategoryChange = (val: string, name: any) => {
-    setcategoryForm({ ...categoryForm, [name]: val });
-  };
-
-  /**
-   * @handle_Menu_Change
-   */
-  const handleMenuChange = (val: string, name: any) => {
-    setmenuForm({ ...menuForm, [name]: val });
-  };
-
-  const onIngredientSave = () => {
-    let tempArr: any = menuForm.Ingredients;
-    tempArr.push(menuForm.Ingredient);
-    setmenuForm({ ...menuForm, Ingredients: tempArr });
-    setmenuForm({ ...menuForm, Ingredient: "" });
-  };
-
-  const removeIngredient = (index) => {
-    let tempArr = menuForm.Ingredients;
-    tempArr.splice(index, 1);
-    setmenuForm({ ...menuForm, Ingredients: tempArr });
-  };
-
-  const onCategorySave = () => {
-    if (!categoryForm.CategoryName) {
-      return showToast("Category name required");
-    }
-
-    Api.post("/categories/addNew", categoryForm)
-      .then((res) => {
-        setcategoryForm({ CategoryName: "", Description: "" });
-        refRBSheet.current.close();
-        showToast("Category Added");
-      })
-      .catch((err) => {
-        console.log(err);
-      });
-  };
-
   const getAllCategories = () => {
     Api.get("/categories/getAll")
       .then((res) => {
@@ -124,14 +58,60 @@ function AddMenu({ navigation }) {
       });
   };
 
+  useEffect(() => {
+    getAllCategories();
+    const unsubscribe = navigation.addListener("focus", () => {
+      if (!route.params) return;
+      const { itemId, itemData } = route.params;
+      setformType(EDIT_FORM);
+      seteditID(itemId);
+      let { Name, Description, Price, FoodType, Ingredients, AddOns, Types } = itemData;
+      // @ts-ignore
+      setmenuForm({
+        Name,
+        ItemDescription: Description,
+        Price,
+        FoodType,
+        Ingredients: Ingredients.split(","),
+        Ingredient: "",
+      });
+      console.log(AddOns, Types);
+      
+      setaddOns({arr: AddOns});
+      settypes({arr: Types});
+    });
+
+    // Return the function to unsubscribe from the event so it gets removed on unmount
+    return unsubscribe;
+  }, [navigation]);
+
+  const removeIngredient = (index) => {
+    let tempArr = menuForm.Ingredients;
+    tempArr.splice(index, 1);
+    setmenuForm({ ...menuForm, Ingredients: tempArr });
+  };
+
+  const onIngredientSave = () => {
+    let tempArr: any = menuForm.Ingredients;
+    tempArr.push(menuForm.Ingredient);
+    setmenuForm({ ...menuForm, Ingredients: tempArr });
+    setmenuForm({ ...menuForm, Ingredient: "" });
+  };
+
+  /**
+   * @On_Menu_Save
+   */
   const onMenuSave = () => {
     let CategoryID = categories.filter(
       (item): any => item?.CategoryName == selectedCategory
     )[0].ID;
-    Api.post("/menuItem/addNew", { ...menuForm, CategoryID })
-      .then((res) => {
-        getMenu();
-        showToast("Menu Added !");
+
+    let url: string = formType == ADD_FORM ? "addNew" : `update/${editID}`;
+    Api.post(`/menuItem/${url}`, { ...menuForm, CategoryID, MenuTypes: types.arr, MenuAddOns: addOns.arr })
+      .then((res: object) => {
+        showToast(`Menu ${formType == ADD_FORM ? "added" : "updated"} !`);
+        navigation.navigate("Menu")
+        //@ts-ignore
         setmenuForm({
           Name: "",
           ItemDescription: "",
@@ -140,310 +120,470 @@ function AddMenu({ navigation }) {
           Ingredients: [],
           Ingredient: "",
         });
-        refRBSheet.current.close();
       })
-      .catch((err) => {
+      .catch((err: any) => {
+        console.log(err);
         showToast("Something went wrong !");
       });
   };
 
-  const openBottomSheet = (type) => {
-    setBottomSheetType(type);
-    if (type == ADD_MENU && !categories.length) getAllCategories();
-    refRBSheet.current.open();
+  let ActionButton = () => {
+    return (
+      <>
+        {formType == ADD_FORM ? (
+          <Text style={{ color: "#fff" }}>Save</Text>
+        ) : (
+          <Text style={{ color: "#fff" }}>Update</Text>
+        )}
+      </>
+    );
   };
 
   /**
-   * @param index head index of category
-   * @param subIndex subindex of menu items in category
+   * @handle_Menu_Change
    */
-  const editMenu = (index, subIndex) => {
-    refRBSheet.current.open();
-    setBottomSheetType(ADD_MENU)
-    let singleMenu = menu[index]?.Menu_Items[subIndex];
-    let {Name, Description, Price, FoodType, Ingredients} = singleMenu
-    setmenuForm({
-      Name,
-      ItemDescription: Description,
-      Price,
-      FoodType,
-      Ingredients: Ingredients.split(","),
-      Ingredient: "",
-    })
-  }
+  const handleMenuChange = (val: string, name: any) => {
+    setmenuForm({ ...menuForm, [name]: val });
+  };
+
+  /**
+   * @add new type in menu item
+   */
+  const addNewType = () => {
+    let obj = { TypeName: "", Price: "", Serves:"" };
+    let arr: any = types.arr;
+    arr.push(obj);
+    settypes({ arr });
+  };
+
+  const removeType = (index) => {
+    let arr: any = types.arr;
+    arr.splice(index, 1);
+    settypes({ arr });
+  };
+
+  /**
+   * @add new type in menu item
+   */
+  const addNewAddOn = () => {
+    let obj = { AddOn: "", Price: "" };
+    let arr: any = addOns.arr;
+    arr.push(obj);
+    setaddOns({ arr });
+  };
+
+  const removeAddOn = (index) => {
+    let arr: any = addOns.arr;
+    arr.splice(index, 1);
+    setaddOns({ arr });
+  };
+
+  /**
+   * @delete menu item
+   */
+  const removeMenuItem = () => {
+    return false;
+  };
+
+  const handleTypeChange = (index: number, val, name) => {
+    let arr: any = types.arr;
+    arr[index][name] = val;
+    settypes({arr});
+  };
+
+  const handleAddOnChange = (index: number, val, name) => {
+    let arr: any = addOns.arr;
+    arr[index][name] = val;
+    setaddOns({arr});
+  };
 
   return (
-    <View style={styles.container}>
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header */}
-        <Header navigation={navigation} />
-        {/* Titles */}
-        <View style={styles.titlesWrapper}>
-          <Text style={styles.titlesSubtitle}>Menu</Text>
-          <View style={{ flexDirection: "row" }}>
-            <TouchableOpacity
-              onPress={() => openBottomSheet(ADD_MENU)}
-              style={{
-                justifyContent: "center",
-                alignItems: "center",
-                marginHorizontal: marginHorizontal.extraSmall,
-              }}
-            >
-              <View
-                style={{
-                  paddingHorizontal: marginHorizontal.extraSmall,
-                  paddingVertical: spaceVertical.extraSmall - 4,
-                  borderRadius: 10,
-                  backgroundColor: colors.secondary,
-                }}
-              >
-                <Text style={{ color: "#fff" }}>Add Item</Text>
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => openBottomSheet(ADD_CATEGORY)}
-              style={{
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <View
-                style={{
-                  paddingHorizontal: marginHorizontal.extraSmall,
-                  paddingVertical: spaceVertical.extraSmall - 4,
-                  borderRadius: 10,
-                  backgroundColor: colors.secondary,
-                }}
-              >
-                <Text style={{ color: "#fff" }}>Add Category</Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-        </View>
-        <RBSheet
-          ref={refRBSheet}
-          height={600}
-          openDuration={250}
-          customStyles={{
-            container: {
-              borderTopLeftRadius: 15,
-              borderTopRightRadius: 15,
-            },
+    <>
+      <Header navigation={navigation} />
+      <ScrollView>
+        <View
+          style={{
+            marginVertical: spaceVertical.extraSmall,
+            paddingHorizontal: marginHorizontal.small,
           }}
         >
-          <BottomSheet
-            handleCategoryChange={handleCategoryChange}
-            onCategorySave={onCategorySave}
-            categoryForm={categoryForm}
-            type={BottomSheetType}
-            BottomSheetTypeObj={BottomSheetTypeObj}
-            categories={categories}
-            FoodType={FoodType}
-            onIngredientSave={onIngredientSave}
-            ingredientsArr={menuForm.Ingredients}
-            setingredients={(val: string) =>
-              setmenuForm({ ...menuForm, Ingredient: val })
-            }
-            removeIngredient={removeIngredient}
-            menuForm={menuForm}
-            handleMenuChange={handleMenuChange}
-            onMenuSave={onMenuSave}
-            selectedCategory={selectedCategory}
-            setselectedCategory={setselectedCategory}
-          />
-        </RBSheet>
+          <>
+            {/**
+             * @ADD_MENU
+             */}
+            <Conditional
+              condition={formType == ADD_FORM}
+              elseComponent={
+                <Text style={{ fontSize: 18, textDecorationLine: "underline" }}>
+                  Edit Menu
+                </Text>
+              }
+            >
+              <Text style={{ fontSize: 18, textDecorationLine: "underline" }}>
+                Add Menu
+              </Text>
+            </Conditional>
 
-        {/* Popular */}
-        <View style={styles.popularWrapper}>
-          {(menu.length) ? (
-            menu.map((item, index) => {
-              return <MenuItem item={item} key={index} editMenu={editMenu} index={index}
-              />;
-            })
-          ) : (
-            <View style={{ justifyContent: "center", alignItems: "center", height: 500 }}>
-              <Text>No menu item added</Text>
+            <Text style={styles.text_footer}>Category</Text>
+            <View
+              style={{ flexDirection: "row", justifyContent: "space-between" }}
+            >
+              <Text style={styles.text_footer}>
+                {selectedCategory || "Select Category"}
+              </Text>
+
+              <Picker
+                selectedValue={selectedCategory}
+                onValueChange={(itemValue, itemIndex) =>
+                  setselectedCategory(itemValue)
+                }
+                style={{ width: 30, height: 50 }}
+              >
+                {categories.length
+                  ? categories.map((item, index) => {
+                      return (
+                        <Picker.Item
+                          key={index}
+                          label={item?.CategoryName}
+                          value={item?.CategoryName}
+                        />
+                      );
+                    })
+                  : null}
+              </Picker>
             </View>
-          )}
+
+            <Text style={styles.text_footer}>Item Name</Text>
+
+            <View style={styles.action}>
+              <Feather name="edit" color="#05375a" size={20} />
+              <TextInput
+                placeholder="Item name"
+                style={styles.textInput}
+                autoCapitalize="none"
+                value={menuForm?.Name}
+                onChangeText={(val) => handleMenuChange(val, "Name")}
+              />
+            </View>
+            <Text style={styles.text_footer}>Item Description</Text>
+
+            <View style={styles.action}>
+              <Feather name="info" color="#05375a" size={20} />
+              <TextInput
+                placeholder="Item Description"
+                style={styles.textInput}
+                autoCapitalize="none"
+                value={menuForm?.ItemDescription}
+                onChangeText={(val) => handleMenuChange(val, "ItemDescription")}
+              />
+            </View>
+            {/* <Text style={styles.text_footer}>Item Price</Text>
+
+            <View style={styles.action}>
+              <FontAwesome name="rupee" color="#05375a" size={18} />
+              <TextInput
+                placeholder="Price"
+                style={styles.textInput}
+                autoCapitalize="none"
+                value={menuForm?.Price}
+                onChangeText={(val) => handleMenuChange(val, "Price")}
+              />
+            </View> */}
+            <Text style={styles.text_footer}>Food Type</Text>
+            <View style={{ flexDirection: "row" }}>
+              <TouchableOpacity
+                onPress={() => handleMenuChange(VEG, "FoodType")}
+                activeOpacity={0.8}
+              >
+                <View
+                  style={
+                    menuForm?.FoodType == VEG
+                      ? styles.selectedType
+                      : styles.type
+                  }
+                >
+                  <Ionicons
+                    name={`radio-button-${
+                      menuForm?.FoodType == VEG ? "on" : "off"
+                    }`}
+                    color="#05375a"
+                    size={20}
+                  />
+
+                  <Text
+                    style={{ paddingLeft: 4, paddingTop: 2, color: "green" }}
+                  >
+                    Veg
+                  </Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleMenuChange(NON_VEG, "FoodType")}
+                activeOpacity={0.8}
+              >
+                <View
+                  style={
+                    menuForm?.FoodType == NON_VEG
+                      ? styles.selectedType
+                      : styles.type
+                  }
+                >
+                  <Ionicons
+                    name={`radio-button-${
+                      menuForm?.FoodType == NON_VEG ? "on" : "off"
+                    }`}
+                    color="#05375a"
+                    size={20}
+                  />
+
+                  <Text style={{ paddingLeft: 4, paddingTop: 2, color: "red" }}>
+                    Non Veg
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            {/* <Text style={styles.text_footer}>Ingredients</Text>
+
+            <View style={styles.action}>
+              <Feather name="edit" color="#05375a" size={20} />
+              <TextInput
+                placeholder="Add Ingredients"
+                style={styles.textInput}
+                autoCapitalize="none"
+                value={menuForm?.Ingredient}
+                onChangeText={(val: string) =>
+                  setmenuForm({ ...menuForm, Ingredient: val })
+                }
+              />
+              <TouchableOpacity onPress={onIngredientSave}>
+                <Ionicons name="save" color="grey" size={20} />
+              </TouchableOpacity>
+            </View>
+            {!menuForm.Ingredients.length ? (
+              <Text style={{ color: "gray" }}>
+                Press save icon to add an ingredient
+              </Text>
+            ) : null} */}
+            <ScrollView horizontal>
+              <View style={{ flexDirection: "row" }}>
+                {menuForm.Ingredients.map((item: string, index: number) => {
+                  return (
+                    <View
+                      key={index}
+                      style={{
+                        paddingHorizontal: marginHorizontal.extraSmall - 4,
+                        borderWidth: 1,
+                        borderColor: colors.darkGray,
+                        borderRadius: 45,
+                        marginHorizontal: marginHorizontal.extraSmall - 4,
+                        marginVertical: spaceVertical.extraSmall,
+                      }}
+                    >
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <Text style={{ paddingRight: 5 }}>{item}</Text>
+                        <TouchableOpacity
+                          onPress={() => removeIngredient(index)}
+                        >
+                          <Ionicons
+                            name={`close-circle-outline`}
+                            color="#05375a"
+                            size={18}
+                          />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            </ScrollView>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                marginTop: spaceVertical.extraSmall,
+              }}
+            >
+              <Text style={styles.text_footer}>Types</Text>
+              <TouchableOpacity
+                onPress={addNewType}
+                style={{
+                  justifyContent: "flex-start",
+                  alignItems: "flex-start",
+                  // marginTop: spaceVertical.semiSmall,
+                }}
+              >
+                <View
+                  style={{
+                    paddingHorizontal: marginHorizontal.normal,
+                    paddingVertical: spaceVertical.extraSmall - 4,
+                    borderRadius: 10,
+                    backgroundColor: colors.secondary,
+                    alignItems: "center",
+                  }}
+                >
+                  <Text style={{ color: "#fff" }}>Add New Type</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            {types.arr.length
+              ? types.arr.map((item: any, index) => {
+                  return (
+                    <>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          marginVertical: spaceVertical.extraSmall - 6,
+                        }}
+                      >
+                        <TextInput
+                          placeholder="Title:"
+                          style={styles.textInput}
+                          autoCapitalize="none"
+                          value={item.TypeName}
+                          onChangeText={(val) =>
+                            handleTypeChange(index, val, "TypeName")
+                          }
+                        />
+                        <TextInput
+                          placeholder="Price:"
+                          style={styles.textInput}
+                          autoCapitalize="none"
+                          value={item.Price}
+                          onChangeText={(val) =>
+                            handleTypeChange(index, val, "Price")
+                          }
+                        />
+                             <TextInput
+                          placeholder="Serves:"
+                          style={styles.textInput}
+                          autoCapitalize="none"
+                          value={item.Serves}
+                          onChangeText={(val) =>
+                            handleTypeChange(index, val, "Serves")
+                          }
+                        />
+                        <TouchableOpacity onPress={() => removeType(index)}>
+                          <Ionicons name="trash" color="grey" size={20} />
+                        </TouchableOpacity>
+                      </View>
+                      <View
+                        style={{
+                          borderBottomColor: "#e6e6e6",
+                          borderBottomWidth: 1,
+                        }}
+                      />
+                    </>
+                  );
+                })
+              : null}
+
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                marginTop: spaceVertical.extraSmall,
+              }}
+            >
+              <Text style={styles.text_footer}>Add On</Text>
+              <TouchableOpacity
+                onPress={addNewAddOn}
+                style={{
+                  justifyContent: "flex-start",
+                  alignItems: "flex-start",
+                  // marginTop: spaceVertical.semiSmall,
+                }}
+              >
+                <View
+                  style={{
+                    paddingHorizontal: marginHorizontal.normal,
+                    paddingVertical: spaceVertical.extraSmall - 4,
+                    borderRadius: 10,
+                    backgroundColor: colors.secondary,
+                    alignItems: "center",
+                  }}
+                >
+                  <Text style={{ color: "#fff" }}>New Add On</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            {addOns.arr.length
+              ? addOns.arr.map((item: any, index) => {
+                  return (
+                    <>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          marginVertical: spaceVertical.extraSmall - 6,
+                        }}
+                      >
+                        <TextInput
+                          placeholder="Add On:"
+                          style={styles.textInput}
+                          autoCapitalize="none"
+                          value={item.AddOn}
+                          onChangeText={(val) =>
+                            handleAddOnChange(index, val, "AddOn")
+                          }
+                        />
+                        <TextInput
+                          placeholder="Price:"
+                          style={styles.textInput}
+                          autoCapitalize="none"
+                          value={item.Price}
+                          onChangeText={(val) =>
+                            handleAddOnChange(index, val, "Price")
+                          }
+                        />
+                        <TouchableOpacity onPress={() => removeAddOn(index)}>
+                          <Ionicons name="trash" color="grey" size={20} />
+                        </TouchableOpacity>
+                      </View>
+                      <View
+                        style={{
+                          borderBottomColor: "#e6e6e6",
+                          borderBottomWidth: 1,
+                        }}
+                      />
+                    </>
+                  );
+                })
+              : null}
+            <TouchableOpacity
+              onPress={onMenuSave}
+              style={{
+                justifyContent: "flex-start",
+                alignItems: "flex-start",
+                marginTop: spaceVertical.semiSmall,
+              }}
+            >
+              <View
+                style={{
+                  paddingHorizontal: marginHorizontal.normal,
+                  paddingVertical: spaceVertical.extraSmall - 4,
+                  borderRadius: 10,
+                  backgroundColor: colors.secondary,
+                  alignItems: "center",
+                }}
+              >
+                <ActionButton />
+              </View>
+            </TouchableOpacity>
+          </>
         </View>
       </ScrollView>
-    </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-
-  titlesWrapper: {
-    marginTop: spaceVertical.small,
-    paddingHorizontal: marginHorizontal.small,
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  titlesSubtitle: {
-    fontFamily: "Montserrat-Regular",
-    fontSize: 20,
-    color: colors.textDark,
-    marginBottom: spaceVertical.small,
-  },
-  titlesTitle: {
-    fontFamily: "Montserrat-Bold",
-    fontSize: 32,
-    color: colors.textDark,
-    marginTop: 5,
-  },
-  searchWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    marginTop: 30,
-  },
-  search: {
-    flex: 1,
-    marginLeft: 10,
-    borderBottomColor: colors.textLight,
-    borderBottomWidth: 2,
-  },
-  searchText: {
-    fontFamily: "Montserrat-Semibold",
-    fontSize: 14,
-    marginBottom: 5,
-    color: colors.textLight,
-  },
-  categoriesWrapper: {
-    marginTop: 30,
-  },
-  categoriesTitle: {
-    fontFamily: "Montserrat-Bold",
-    fontSize: 16,
-    paddingHorizontal: 20,
-  },
-  categoriesListWrapper: {
-    paddingTop: 15,
-    paddingBottom: 20,
-  },
-  categoryItemWrapper: {
-    backgroundColor: "#F5CA48",
-    marginRight: 20,
-    borderRadius: 20,
-    shadowColor: colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  categoryItemImage: {
-    width: 60,
-    height: 60,
-    marginTop: 25,
-    alignSelf: "center",
-    marginHorizontal: 20,
-  },
-  categoryItemTitle: {
-    textAlign: "center",
-    fontFamily: "Montserrat-Medium",
-    fontSize: 14,
-    marginTop: 10,
-  },
-  categorySelectWrapper: {
-    alignSelf: "center",
-    justifyContent: "center",
-    marginTop: 20,
-    width: 26,
-    height: 26,
-    borderRadius: 26,
-    marginBottom: 20,
-  },
-  categorySelectIcon: {
-    alignSelf: "center",
-  },
-  popularWrapper: {
-    paddingHorizontal: 20,
-  },
-  popularTitle: {
-    fontFamily: "Montserrat-Bold",
-    fontSize: 16,
-  },
-  popularCardWrapper: {
-    //   backgroundColor: colors.white,
-    //   borderRadius: 25,
-    //   paddingTop: 20,
-    paddingLeft: 20,
-    flexDirection: "row",
-    overflow: "hidden",
-    //   shadowColor: colors.black,
-    //   shadowOffset: {
-    //     width: 0,
-    //     height: 2,
-    //   },
-    //   shadowOpacity: 0.05,
-    //   shadowRadius: 10,
-    //   elevation: 2,
-  },
-  popularTopWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  popularTopText: {
-    marginLeft: 10,
-    fontFamily: "Montserrat-SemiBold",
-    fontSize: 14,
-  },
-  popularTitlesWrapper: {
-    marginTop: 20,
-  },
-  popularTitlesTitle: {
-    fontFamily: "Montserrat-SemiBold",
-    fontSize: 14,
-    color: colors.textDark,
-  },
-  popularTitlesWeight: {
-    fontFamily: "Montserrat-Medium",
-    fontSize: 12,
-    color: colors.textLight,
-    marginTop: 5,
-  },
-  popularCardBottom: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 10,
-    marginLeft: -20,
-  },
-  addPizzaButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 40,
-    paddingVertical: 20,
-    borderTopRightRadius: 25,
-    borderBottomLeftRadius: 25,
-  },
-  ratingWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginLeft: 20,
-  },
-  rating: {
-    fontFamily: "Montserrat-SemiBold",
-    fontSize: 12,
-    color: colors.textDark,
-    marginLeft: 5,
-  },
-  popularCardRight: {
-    marginLeft: 40,
-  },
-  popularCardImage: {
-    width: 210,
-    height: 125,
-    resizeMode: "contain",
-  },
   textInput: {
     flex: 1,
     // marginTop: Platform.OS === "ios" ? 0 : -12,
@@ -461,6 +601,22 @@ const styles = StyleSheet.create({
     color: "#05375a",
     fontSize: 18,
     marginTop: spaceVertical.small,
+  },
+  type: {
+    flexDirection: "row",
+    fontSize: 18,
+
+    marginRight: marginHorizontal.small,
+  },
+  selectedType: {
+    flexDirection: "row",
+    marginRight: marginHorizontal.small,
+    borderWidth: 1,
+    fontSize: 18,
+    paddingVertical: 2,
+    paddingHorizontal: 5,
+    borderColor: colors.secondary,
+    borderRadius: 10,
   },
 });
 

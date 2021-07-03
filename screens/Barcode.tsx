@@ -1,68 +1,46 @@
-import * as BarCodeScanner from 'expo-barcode-scanner';
+// import * as BarCodeScanner from 'expo-barcode-scanner';
 import { BlurView } from 'expo-blur';
-import { throttle } from 'lodash';
-import React from 'react';
-import { Linking, Platform, StatusBar, StyleSheet, Text, View } from 'react-native';
+// import { throttle } from 'lodash';
+// import React, { useState } from 'react';
+import {  Platform, StatusBar} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
 import { Camera } from 'expo-camera';
 import QRFooterButton from '../components/QRFooterButton';
 import QRIndicator from '../components/QrIndicator';
+import Api from "../utility/API";
+import { showToast } from '../utility/commonUtility';
+import React, { useState, useEffect } from 'react';
+import { Text, View, StyleSheet } from 'react-native';
+import { BarCodeScanner } from 'expo-barcode-scanner';
 
-type State = {
-  isVisible: boolean;
-  url: null | string;
-};
-
-const initialState: State = { isVisible: Platform.OS === 'ios', url: null };
-
-export default function BarCodeScreen(props) {
-  const [state, setState] = React.useReducer(
-    (props: State, state: Partial<State>): State => ({ ...props, ...state }),
-    initialState
-  );
+export default function App(props) {
+  const [hasPermission, setHasPermission]:any = useState(null);
+  const [scanned, setScanned] = useState(false);
   const [isLit, setLit] = React.useState(false);
 
-  React.useEffect(() => {
-    let timeout;
-    if (!state.isVisible) {
-      timeout = setTimeout(() => {
-        setState({ isVisible: true });
-      }, 800);
-    }
-    return () => {
-      clearTimeout(timeout);
-    };
+
+  useEffect(() => {
+    (async () => {
+      const { status } = await BarCodeScanner.requestPermissionsAsync();
+      setHasPermission(status === 'granted');
+    })();
   }, []);
 
-  React.useEffect(() => {
-    if (!state.isVisible && state.url) {
-      openUrl(state.url);
-    }
-  }, [state.isVisible, state.url]);
-
-  const _handleBarCodeScanned = throttle(({ data: url }) => {
-    setState({ isVisible: false, url });
-  }, 1000);
-
-  const openUrl = (url: string) => {
-    props.navigation.pop();
-
-    setTimeout(
-      () => {
-        // note(brentvatne): Manually reset the status bar before opening the
-        // experience so that we restore the correct status bar color when
-        // returning to home
-        StatusBar.setBarStyle('default');
-        Linking.openURL(url);
-      },
-      Platform.select({
-        ios: 16,
-        // note(brentvatne): Give the modal a bit of time to dismiss on Android
-        default: 500,
-      })
-    );
+  const _handleBarCodeScanned = ({ type, data }) => {
+    setScanned(true);
+    let {orderNo, userid} = JSON.parse(data)
+        Api.post("/foodOrder/confirmOrder", {orderNo, userid})
+        .then(res => {
+          showToast("Order taken successfully");
+          props.navigation.navigate("Home")
+        })
+        .catch(err => console.log(err, "this is err"))
   };
+
+    const onFlashToggle = React.useCallback(() => {
+    setLit(isLit => !isLit);
+  }, []);
+
 
   const onCancel = React.useCallback(() => {
     if (Platform.OS === 'ios') {
@@ -71,39 +49,43 @@ export default function BarCodeScreen(props) {
       props.navigation.goBack(null);
     }
   }, []);
-
-  const onFlashToggle = React.useCallback(() => {
-    setLit(isLit => !isLit);
-  }, []);
-
   const { top, bottom } = useSafeAreaInsets();
 
+
+  if (hasPermission === null) {
+    return <Text>Requesting for camera permission</Text>;
+  }
+  if (hasPermission === false) {
+    return <Text>No access to camera</Text>;
+  }
+
   return (
+ 
     <View style={styles.container}>
-      {state.isVisible ? (
-        <Camera
-          barCodeScannerSettings={{
-            barCodeTypes: [BarCodeScanner.Constants.BarCodeType.qr],
-          }}
-          onBarCodeScanned={_handleBarCodeScanned}
-          style={StyleSheet.absoluteFill}
-          flashMode={isLit ? 'torch' : 'off'}
-        />
-      ) : null}
-
-      <View style={[styles.header, { top: 40 + top }]}>
-        <Hint>Scan a QR code</Hint>
-      </View>
-
-      <QRIndicator />
-
-      <View style={[styles.footer, { bottom: 30 + bottom }]}>
-        <QRFooterButton onPress={onFlashToggle} isActive={isLit} iconName="ios-flashlight" />
-        <QRFooterButton onPress={onCancel} iconName="ios-close" iconSize={48} />
-      </View>
-
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
-    </View>
+           {/* {state.isVisible ? ( */}
+            <Camera
+              barCodeScannerSettings={{
+                barCodeTypes: [BarCodeScanner.Constants.BarCodeType.qr],
+              }}
+              onBarCodeScanned={_handleBarCodeScanned}
+              style={StyleSheet.absoluteFill}
+              flashMode={isLit ? 'torch' : 'off'}
+            />
+       
+    
+          <View style={[styles.header, { top: 40 + top }]}>
+            <Hint>Scan a QR code to take order</Hint>
+          </View>
+    
+          <QRIndicator />
+    
+          <View style={[styles.footer, { bottom: 30 + bottom }]}>
+            <QRFooterButton onPress={onFlashToggle} isActive={isLit} iconName="ios-flashlight" />
+            <QRFooterButton onPress={onCancel} iconName="ios-close" iconSize={48} />
+          </View>
+    
+          <StatusBar barStyle="light-content" backgroundColor="#000" />
+        </View>
   );
 }
 
@@ -114,6 +96,7 @@ function Hint({ children }: { children: string }) {
     </BlurView>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {

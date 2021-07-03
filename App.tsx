@@ -6,11 +6,12 @@ import Auth from "./screens/Auth";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "./contexts/auth.context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { showToast, TOKEN_PREFIX } from "./utility/commonUtility";
+import { PLACE_SLUG, showToast, TOKEN_PREFIX } from "./utility/commonUtility";
 import Splash from "./components/Splash";
 import Api from "./utility/API"
 import { ToastAndroid } from "react-native";
 import Barcode from "./screens/Barcode";
+import AddMenu from "./screens/AddMenu";
 
 const RootStack = createStackNavigator();
 
@@ -68,16 +69,14 @@ export default function App() {
 
   const authContext = React.useMemo(
     () => ({
-      signIn: (data: object) => {
-        console.log(data, "this is data");
-        
+      signIn: (data: any) => {        
         Api.post("/place/placeLogin", data)
         .then(async result => {
-          console.log(result);
           
           try {
             
             await AsyncStorage.setItem(TOKEN_PREFIX, result.data.data);
+            await AsyncStorage.setItem(PLACE_SLUG, data.PlaceSlug);
             dispatch({ type: "SIGN_IN", token: result.data.data });
             showToast("Logged In !")
           } catch (e) {
@@ -144,6 +143,7 @@ export default function App() {
               <>
               <RootStack.Screen name="App" component={Tabs} />
               <RootStack.Screen name="Barcode" component={Barcode} />
+              <RootStack.Screen name="AddMenu" component={AddMenu} />
               </>
             ) : (
               <RootStack.Screen name="Auth" component={Auth} />
